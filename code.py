@@ -36,11 +36,14 @@ trigger_state = False
 pot_read = AnalogIn(board.A1)
 
 # Hall effect sensor (49E analog, non-latched, on A0)
-# Closed barrel (magnet near): ~64000-65500
-# Open barrel (magnet far):    ~46400-47000
 sensor = AnalogIn(board.A0)
-HALL_OPEN_THRESHOLD = 52000    # below this = barrel open
-HALL_CLOSED_THRESHOLD = 56000  # above this = barrel closed
+# Auto-calibrate: read baseline with barrel closed at boot, then set thresholds
+# relative to that value. This handles USB vs battery voltage differences.
+hall_baseline = sensor.value
+HALL_MARGIN = 12000            # how far below baseline = barrel open
+HALL_OPEN_THRESHOLD = hall_baseline - HALL_MARGIN        # below this = barrel open
+HALL_CLOSED_THRESHOLD = hall_baseline - (HALL_MARGIN - 3000)  # above this = barrel closed
+HALL_FIRE_LOCKOUT = 0.5        # ignore hall for 500ms after firing (servo vibration)
 
 # Photocell
 photocell = analogio.AnalogIn(board.A2)
@@ -113,8 +116,9 @@ hall_raw = sensor.value
 trigger_count = 0
 b = 0
 hall_last_change = time.monotonic()
-HALL_DEBOUNCE = 0.1  # 100ms debounce for hall sensor
+HALL_DEBOUNCE = 0.3  # 300ms debounce for hall sensor (filters trigger vibration)
 servo_fire_time = 0
+last_fire_time = 0
 SERVO_MIN_DURATION = 0.35  # 350ms at yellow before auto-return to green
 dbg_count = 0
 
@@ -132,7 +136,7 @@ def get_mode(mode):
 
 def start():
     raw = sensor.value
-    print("[STARTUP] hall_raw=%d" % raw)
+    print("[STARTUP] hall_raw=%d baseline=%d open_th=%d close_th=%d" % (raw, hall_baseline, HALL_OPEN_THRESHOLD, HALL_CLOSED_THRESHOLD))
     if raw < HALL_OPEN_THRESHOLD:
         audio.play(reloadOpen)
         prop_servo.angle = needle_red
@@ -162,9 +166,11 @@ while True:
             audio.play(shoot)
             prop_servo.angle = needle_yellow
             servo_fire_time = now
+            last_fire_time = now
             print("[FIRE] cnt=%d angle=%d" % (trigger_count, needle_yellow))
         elif trigger_count == 19:  # 20th shot
             audio.play(shoot)
+            last_fire_time = now
             prop_servo.angle = needle_red
         else:  # out of ammo
             audio.play(denied)
@@ -185,7 +191,7 @@ while True:
 
     # Reload behavior (analog hall with hysteresis)
     # Low value = barrel open (magnet far), High value = barrel closed (magnet near)
-    if hall_raw < HALL_OPEN_THRESHOLD and not barrel_open and (now - hall_last_change) > HALL_DEBOUNCE:
+    if hall_raw < HALL_OPEN_THRESHOLD and not barrel_open and (now - hall_last_change) > HALL_DEBOUNCE and (now - last_fire_time) > HALL_FIRE_LOCKOUT:
         audio.play(reloadOpen)
         prop_servo.angle = needle_red
         barrel_open = True
