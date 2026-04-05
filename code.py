@@ -64,7 +64,7 @@ prop_servo = servo.Servo(pwm)
 
 needle_green = 90   # idle / loaded
 needle_yellow = 40  # normal fire
-needle_red = 10     # out of ammo
+needle_red = 0      # barrel open (max deflection)
 
 prop_servo.angle = needle_green
 
@@ -168,10 +168,10 @@ while True:
             servo_fire_time = now
             last_fire_time = now
             print("[FIRE] cnt=%d angle=%d" % (trigger_count, needle_yellow))
-        elif trigger_count == 19:  # 20th shot
+        elif trigger_count == 19:  # 20th shot (out of ammo)
             audio.play(shoot)
             last_fire_time = now
-            prop_servo.angle = needle_red
+            prop_servo.angle = needle_yellow
         else:  # out of ammo
             audio.play(denied)
         trigger_count += 1
