@@ -14,9 +14,13 @@ Based on the original code by Andrew Lamson (11/28/2023).
 - Barrel closed (magnet near): ~64000-65500
 - Barrel open (magnet far): ~46400-47000
 
-Uses two thresholds with hysteresis to prevent flickering:
-- `HALL_OPEN_THRESHOLD = 52000` (below = barrel open)
-- `HALL_CLOSED_THRESHOLD = 56000` (above = barrel closed)
+Uses two thresholds with hysteresis to prevent flickering, **auto-calibrated at boot**:
+- Reads the hall sensor baseline with barrel closed at startup
+- Sets `HALL_OPEN_THRESHOLD = baseline - 12000` and `HALL_CLOSED_THRESHOLD = baseline - 9000`
+- This handles voltage differences between USB power (~64000 baseline) and LiPo battery (~49000 baseline)
+- **Important: barrel must be closed at power-on for correct calibration**
+
+Additionally, a 500ms fire lockout prevents servo vibration from triggering false barrel-open detections.
 
 **Removed:**
 - `EXTERNAL_POWER` power-cycle reset hack
