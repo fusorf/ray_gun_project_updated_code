@@ -45,6 +45,15 @@ Additionally, a 500ms fire lockout prevents servo vibration from triggering fals
 
 **Updated:** Added `servo_fire_time` and `SERVO_MIN_DURATION = 0.35s` - the servo stays at yellow for at least 350ms before auto-returning to green, regardless of trigger timing. This ensures a visible needle deflection on every shot.
 
+### 4b. Servo positions: separate out-of-ammo from barrel-open
+
+**Original:** Both out-of-ammo (20th shot) and barrel-open used the same servo position (`needle_red = 10`).
+
+**Updated:** Three distinct positions matching the gauge dial:
+- `needle_green = 90` - idle / loaded
+- `needle_yellow = 40` - firing deflection + out of ammo (20 shots)
+- `needle_red = 0` - barrel open only (maximum deflection, symmetric to green around yellow)
+
 ### 5. Photocell threshold recalibration
 
 **Original:** Battery detection threshold was `photostate < 500` / `photostate > 500`.
